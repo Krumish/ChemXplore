@@ -210,7 +210,8 @@ const Layout: React.FC<{
             )}
             <h1 className="font-bold text-xl text-slate-900 tracking-tight">{title}</h1>
           </div>
-          
+
+            {/* XP Badge */}
           <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100 shadow-sm">
             <Trophy className="w-4 h-4 text-amber-500" fill="currentColor" />
             <span className="font-bold text-amber-700 text-sm">{xp}</span>
@@ -307,7 +308,7 @@ const AlienGardenSim: React.FC<{ onComplete: () => void; addXp: (amount: number)
         <div className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold mb-2">
           Simulation Active
         </div>
-        <h3 className="text-xl font-bold text-gray-900">Grow the Zogberry</h3>
+        <h3 className="text-xl font-bold text-gray-900">Mission: Grow the Zogberry</h3>
         <p className="text-sm text-gray-500 mt-1 max-w-[280px] mx-auto">
           Adjust the soil to <strong>pH {targetPh}</strong>. Zogberries love acid!
         </p>
@@ -466,7 +467,7 @@ const App = () => {
             <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
             <div className="relative z-10">
               <h2 className="text-3xl font-bold mb-2">Welcome Back!</h2>
-              <p className="text-indigo-100 mb-6 text-sm">You're on a 3-day streak. Keep that momentum going!</p>
+              <p className="text-indigo-100 mb-6 text-sm">Ready to master Chemical Reactions?</p>
               
               <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-indigo-300 mb-2">
                 <span>Level 4</span>
@@ -481,8 +482,8 @@ const App = () => {
           {/* Module List */}
           <div>
             <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-lg font-bold text-slate-900">Your Path</h3>
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">Chemistry Track</span>
+              <h3 className="text-lg font-bold text-slate-900">Chemistry Track</h3>
+              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">3 Modules</span>
             </div>
             
             <div className="space-y-4">
