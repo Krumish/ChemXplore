@@ -4,8 +4,6 @@ import {
   Play, 
   Lock, 
   Trophy, 
-  Menu, 
-  ArrowLeft, 
   Home, 
   Search, 
   User, 
@@ -157,7 +155,7 @@ const Layout: React.FC<{
   onBack?: () => void;
   currentTab: 'learn' | 'explore' | 'profile';
   onTabChange: (tab: 'learn' | 'explore' | 'profile') => void;
-}> = ({ children, title, xp, onBack, currentTab, onTabChange }) => {  return (
+}> = ({ children, xp, currentTab, onTabChange }) => {  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 flex flex-col font-sans text-slate-900">
         {/* Top Nav Bar for Desktop */}
 <nav className="w-full bg-white/80 backdrop-blur-xl shadow-lg border-b border-indigo-100/50 px-8 py-4 flex items-center justify-between sticky top-0 z-50">

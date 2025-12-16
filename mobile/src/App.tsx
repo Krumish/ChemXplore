@@ -61,7 +61,7 @@ const INITIAL_MODULES: Module[] = [
     icon: 'flask',
     color: 'bg-purple-500',
     status: ModuleStatus.IN_PROGRESS,
-    progress: 35
+    progress: 0
   },
   {
     id: 'reaction-types',
@@ -69,7 +69,7 @@ const INITIAL_MODULES: Module[] = [
     description: 'Solve atomic logic puzzles to synthesize new compounds.',
     icon: 'atom',
     color: 'bg-blue-500',
-    status: ModuleStatus.IN_PROGRESS, 
+    status: ModuleStatus.LOCKED, 
     progress: 0
   },
   {
@@ -78,7 +78,7 @@ const INITIAL_MODULES: Module[] = [
     description: 'Test conductivity and solubility in the virtual lab.',
     icon: 'zap',
     color: 'bg-orange-500',
-    status: ModuleStatus.IN_PROGRESS, 
+    status: ModuleStatus.LOCKED, 
     progress: 0
   }
 ];
@@ -237,7 +237,7 @@ const QuizView: React.FC<{ moduleId: string; onComplete: (score: number) => void
     if (currentQIndex < questions.length - 1) {
       setCurrentQIndex(i => i + 1);
     } else {
-      onComplete(score + (selectedOption === currentQ.correctIndex ? 0 : 0)); 
+      onComplete(score);
     }
   };
 
@@ -682,36 +682,85 @@ const SolutionPropertiesSim: React.FC<{ onComplete: () => void; addXp: (amount: 
 const App = () => {
   const [view, setView] = useState<'home' | 'module-intro' | 'module-sim' | 'module-quiz' | 'module-done'>('home');
   const [activeModuleId, setActiveModuleId] = useState<string>('acids-bases');
-  const [xp, setXp] = useState(1250);
+  const [xp, setXp] = useState<number>(0);
   const [modules, setModules] = useState<Module[]>(INITIAL_MODULES);
   const [lastQuizScore, setLastQuizScore] = useState(0);
+  const PASSING_SCORE = 8;
+  const overallProgress = modules.reduce((sum, m) => sum + m.progress, 0) / modules.length;
 
   const activeModule = modules.find(m => m.id === activeModuleId)!;
 
   const handleStartModule = (id: string) => {
-    setActiveModuleId(id);
-    setView('module-intro');
-  };
+    setActiveModuleId(id); 
+
+    setModules(prev =>
+    prev.map(m =>
+      m.id === id
+        ? { ...m, progress: 0, status: ModuleStatus.IN_PROGRESS }
+        : m
+    )
+  );
+
+  setView('module-intro');
+};
 
   const completeSimulation = () => {
-    setView('module-quiz');
-  };
+    setModules(prev =>
+    prev.map(m =>
+      m.id === activeModuleId
+        ? { ...m, progress: 50 }
+        : m
+    )
+  );
 
+  setView('module-quiz');
+};
   const completeQuiz = (score: number) => {
-    setLastQuizScore(score);
-    // Add quiz score * 10 to XP
-    setXp(x => x + (score * 10));
-    setModules(prev => prev.map(m => 
-      m.id === activeModuleId ? { ...m, status: ModuleStatus.COMPLETED, progress: 100 } : m
-    ));
+  setLastQuizScore(score);
+
+  if (score >= PASSING_SCORE) {
+    setXp(prevXp => prevXp + score * 10);
+
+    setModules(prev => {
+      const updated = prev.map((m, idx) => {
+        if (m.id === activeModuleId) {
+          return { ...m, status: ModuleStatus.COMPLETED, progress: 100 };
+        }
+
+        // Unlock next module
+        const activeIndex = prev.findIndex(m => m.id === activeModuleId);
+        if (idx === activeIndex + 1 && m.status === ModuleStatus.LOCKED) {
+          return { ...m, status: ModuleStatus.IN_PROGRESS, progress: 0 };
+        }
+
+        return m;
+      });
+
+      return updated;
+    });
+
     setView('module-done');
-  };
+  } else {
+    // Failed quiz
+    setModules(prev =>
+      prev.map(m =>
+        m.id === activeModuleId
+          ? { ...m, progress: 50 }
+          : m
+      )
+    );
+
+    setView('module-done');
+  }
+};
+
+
 
   const renderSimulation = () => {
       switch(activeModuleId) {
-          case 'acids-bases': return <AlienGardenSim onComplete={completeSimulation} addXp={setXp} />;
-          case 'reaction-types': return <ReactionTypesSim onComplete={completeSimulation} addXp={setXp} />;
-          case 'solution-properties': return <SolutionPropertiesSim onComplete={completeSimulation} addXp={setXp} />;
+          case 'acids-bases': return <AlienGardenSim onComplete={completeSimulation} addXp={(amount) => setXp(prev => prev + amount)} />;
+          case 'reaction-types': return <ReactionTypesSim onComplete={completeSimulation} addXp={(amount) => setXp(prev => prev + amount)} />;
+          case 'solution-properties': return <SolutionPropertiesSim onComplete={completeSimulation} addXp={(amount) => setXp(prev => prev + amount)} />;
           default: return <div>Module Not Found</div>;
       }
   };
@@ -756,7 +805,10 @@ const App = () => {
               <h2 className="text-3xl font-bold mb-2">Welcome Back!</h2>
               <p className="text-indigo-100 mb-6 text-sm">Ready to master Chemical Reactions?</p>
               <div className="w-full bg-indigo-900/40 rounded-full h-3 mb-2 overflow-hidden">
-                <div className="bg-gradient-to-r from-yellow-300 to-yellow-500 h-full rounded-full w-[85%] shadow-lg"></div>
+                <div
+                 className="bg-gradient-to-r from-yellow-300 to-yellow-500 h-full rounded-full shadow-lg transition-all duration-700 ease-out"
+                 style={{ width: `${overallProgress}%` }}>
+                 </div>
               </div>
             </div>
           </div>
@@ -842,7 +894,7 @@ const App = () => {
           <div className="w-full bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-6">
              <div className="flex justify-between items-center mb-2">
                <span className="font-bold text-slate-500 text-sm uppercase">Quiz Score</span>
-               <span className={`font-bold text-xl ${lastQuizScore >= 7 ? 'text-green-600' : 'text-orange-500'}`}>
+               <span className={`font-bold text-xl ${lastQuizScore >= PASSING_SCORE ? 'text-green-600' : 'text-orange-500'}`}>
                  {lastQuizScore}/10
                </span>
              </div>
@@ -857,7 +909,21 @@ const App = () => {
              </p>
           </div>
 
-          <button onClick={() => setView('home')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-lg shadow-xl hover:bg-slate-800 active:scale-95 transition">Return to Path</button>
+          {lastQuizScore >= PASSING_SCORE ? (
+  <button
+    onClick={() => setView('home')}
+    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-lg"
+  >
+    Return to Path
+  </button>
+) : (
+  <button
+    onClick={() => setView('module-quiz')}
+    className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-lg"
+  >
+    Retry Quiz
+  </button>
+)}
         </div>
       </Layout>
     );
@@ -866,4 +932,4 @@ const App = () => {
   return null;
 };
 
-export default App;
+export default App; 
