@@ -55,7 +55,7 @@ const INITIAL_MODULES: Module[] = [
     icon: 'flask',
     color: 'bg-purple-500',
     status: ModuleStatus.IN_PROGRESS,
-    progress: 0
+    progress: 0 // from 35
   },
   {
     id: 'reaction-types',
@@ -63,7 +63,7 @@ const INITIAL_MODULES: Module[] = [
     description: 'Solve atomic logic puzzles to synthesize new compounds.',
     icon: 'atom',
     color: 'bg-blue-500',
-    status: ModuleStatus.LOCKED, 
+    status: ModuleStatus.LOCKED, //from IN_PROGRESS
     progress: 0
   },
   {
@@ -72,7 +72,7 @@ const INITIAL_MODULES: Module[] = [
     description: 'Test conductivity and solubility in the virtual lab.',
     icon: 'zap',
     color: 'bg-orange-500',
-    status: ModuleStatus.LOCKED, 
+    status: ModuleStatus.LOCKED, //from IN_PROGRESS
     progress: 0
   }
 ];
@@ -722,11 +722,11 @@ const App = () => {
   const [tab, setTab] = useState<'learn' | 'explore' | 'profile'>('learn');
   const [view, setView] = useState<'home' | 'module-intro' | 'module-sim' | 'module-quiz' | 'module-done'>('home');
   const [activeModuleId, setActiveModuleId] = useState<string>('acids-bases');
-  const [xp, setXp] = useState(0);
+  const [xp, setXp] = useState(0); // changed from value 1250 to 0
   const [modules, setModules] = useState<Module[]>(INITIAL_MODULES);
   const [lastQuizScore, setLastQuizScore] = useState(0);
-  const PASSING_SCORE = 8;
-  const overallProgress = modules.reduce((sum, m) => sum + m.progress, 0) / modules.length;
+  const PASSING_SCORE = 8; // added this passing core for the quiz score restriction
+  const overallProgress = modules.reduce((sum, m) => sum + m.progress, 0) / modules.length; // overall progress for the big progress bar
   
 
   const activeModule = modules.find(m => m.id === activeModuleId)!;
