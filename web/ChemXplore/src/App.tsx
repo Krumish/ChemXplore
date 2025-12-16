@@ -55,7 +55,7 @@ const INITIAL_MODULES: Module[] = [
     icon: 'flask',
     color: 'bg-purple-500',
     status: ModuleStatus.IN_PROGRESS,
-    progress: 35
+    progress: 0
   },
   {
     id: 'reaction-types',
@@ -63,7 +63,7 @@ const INITIAL_MODULES: Module[] = [
     description: 'Solve atomic logic puzzles to synthesize new compounds.',
     icon: 'atom',
     color: 'bg-blue-500',
-    status: ModuleStatus.IN_PROGRESS, 
+    status: ModuleStatus.LOCKED, 
     progress: 0
   },
   {
@@ -72,7 +72,7 @@ const INITIAL_MODULES: Module[] = [
     description: 'Test conductivity and solubility in the virtual lab.',
     icon: 'zap',
     color: 'bg-orange-500',
-    status: ModuleStatus.IN_PROGRESS, 
+    status: ModuleStatus.LOCKED, 
     progress: 0
   }
 ];
@@ -155,13 +155,25 @@ const Layout: React.FC<{
   onBack?: () => void;
   currentTab: 'learn' | 'explore' | 'profile';
   onTabChange: (tab: 'learn' | 'explore' | 'profile') => void;
-}> = ({ children, xp, currentTab, onTabChange }) => {  return (
+}> = ({ children, xp, currentTab, onTabChange, onBack }) => {
+    return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 flex flex-col font-sans text-slate-900">
         {/* Top Nav Bar for Desktop */}
 <nav className="w-full bg-white/80 backdrop-blur-xl shadow-lg border-b border-indigo-100/50 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
-  {/* Left: Logo */}
-  <div className="flex items-center gap-4">
-  <span className="bg-black bg-clip-text text-transparent font-bold text-3xl tracking-tight select-none">ChemXplore</span>  </div>
+ {/* Left: Logo with Back Button */}
+<div className="flex items-center gap-4">
+  {onBack && (
+    <button
+      onClick={onBack}
+      className="p-2 hover:bg-slate-100 rounded-full transition active:scale-90"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m15 18-6-6 6-6"/>
+      </svg>
+    </button>
+  )}
+  <span className="bg-black bg-clip-text text-transparent font-bold text-3xl tracking-tight select-none">ChemXplore</span>
+</div>
 
   {/* Center/Right: Navigation Icons */}
   <div className="flex items-center gap-6">
@@ -710,40 +722,87 @@ const App = () => {
   const [tab, setTab] = useState<'learn' | 'explore' | 'profile'>('learn');
   const [view, setView] = useState<'home' | 'module-intro' | 'module-sim' | 'module-quiz' | 'module-done'>('home');
   const [activeModuleId, setActiveModuleId] = useState<string>('acids-bases');
-  const [xp, setXp] = useState(1250);
+  const [xp, setXp] = useState(0);
   const [modules, setModules] = useState<Module[]>(INITIAL_MODULES);
   const [lastQuizScore, setLastQuizScore] = useState(0);
+  const PASSING_SCORE = 8;
+  const overallProgress = modules.reduce((sum, m) => sum + m.progress, 0) / modules.length;
   
 
   const activeModule = modules.find(m => m.id === activeModuleId)!;
 
   const handleStartModule = (id: string) => {
-    setActiveModuleId(id);
-    setView('module-intro');
-  };
+      setActiveModuleId(id);
+  
+      setModules(prev =>
+    prev.map(m =>
+      m.id === id
+        ? { ...m, progress: 0, status: ModuleStatus.IN_PROGRESS }
+        : m
+    )
+  );
+  
+  setView('module-intro');
+};
 
   const completeSimulation = () => {
-    setView('module-quiz');
-  };
-
+    setModules(prev =>
+    prev.map(m =>
+      m.id === activeModuleId
+        ? { ...m, progress: 50 }
+        : m
+    )
+  );
+  
+  setView('module-quiz');
+};
   const completeQuiz = (score: number) => {
     setLastQuizScore(score);
-    // Add quiz score * 10 to XP
-    setXp(x => x + (score * 10));
-    setModules(prev => prev.map(m => 
-      m.id === activeModuleId ? { ...m, status: ModuleStatus.COMPLETED, progress: 100 } : m
-    ));
+
+  if (score >= PASSING_SCORE) {
+    setXp(prevXp => prevXp + score * 10);
+
+    setModules(prev => {
+      const updated = prev.map((m, idx) => {
+        if (m.id === activeModuleId) {
+          return { ...m, status: ModuleStatus.COMPLETED, progress: 100 };
+        }
+
+        // Unlock next module
+        const activeIndex = prev.findIndex(m => m.id === activeModuleId);
+        if (idx === activeIndex + 1 && m.status === ModuleStatus.LOCKED) {
+          return { ...m, status: ModuleStatus.IN_PROGRESS, progress: 0 };
+        }
+
+        return m;
+      });
+
+      return updated;
+    });
+
     setView('module-done');
-  };
+  } else {
+    // Failed quiz
+    setModules(prev =>
+      prev.map(m =>
+        m.id === activeModuleId
+          ? { ...m, progress: 50 }
+          : m
+      )
+    );
+
+    setView('module-done');
+  }
+};
 
   const renderSimulation = () => {
-      switch(activeModuleId) {
-          case 'acids-bases': return <AlienGardenSim onComplete={completeSimulation} addXp={setXp} />;
-          case 'reaction-types': return <ReactionTypesSim onComplete={completeSimulation} addXp={setXp} />;
-          case 'solution-properties': return <SolutionPropertiesSim onComplete={completeSimulation} addXp={setXp} />;
-          default: return <div>Module Not Found</div>;
-      }
-  };
+    switch(activeModuleId) {
+        case 'acids-bases': return <AlienGardenSim onComplete={completeSimulation} addXp={(amount) => setXp(prev => prev + amount)} />;
+        case 'reaction-types': return <ReactionTypesSim onComplete={completeSimulation} addXp={(amount) => setXp(prev => prev + amount)} />;
+        case 'solution-properties': return <SolutionPropertiesSim onComplete={completeSimulation} addXp={(amount) => setXp(prev => prev + amount)} />;
+        default: return <div>Module Not Found</div>;
+    }
+};
 
   const renderIntroContent = () => {
       switch(activeModuleId) {
@@ -786,7 +845,10 @@ const App = () => {
               <h2 className="text-4xl font-bold mb-3 drop-shadow-lg">Welcome Back!</h2>
               <p className="text-indigo-100 mb-8 text-base">Ready to master Chemical Reactions?</p>
               <div className="w-full bg-indigo-900/40 backdrop-blur-sm rounded-full h-4 mb-3 overflow-hidden border border-white/20">
-                <div className="bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 h-full rounded-full w-[85%] shadow-lg relative overflow-hidden">
+                <div
+    className="bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 h-full rounded-full shadow-lg relative overflow-hidden"
+    style={{ width: `${overallProgress}%` }}
+  >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
                 </div>
               </div>
@@ -836,7 +898,7 @@ const App = () => {
 
   if (view === 'module-intro') {
     return (
-     <Layout title="ChemXplore" xp={xp} currentTab={tab} onTabChange={setTab}>
+     <Layout title="ChemXplore" xp={xp} currentTab={tab} onTabChange={setTab} onBack={() => setView('home')}>
         <div className="p-6 flex flex-col h-full justify-center min-h-[80vh]">
           <div className="bg-white rounded-3xl p-5 shadow-xl border border-slate-100 text-center relative overflow-hidden">
             <div className={`w-24 h-24 ${activeModule.color.replace('bg-', 'bg-opacity-20 bg-')} rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner rotate-3`}>
@@ -860,7 +922,7 @@ const App = () => {
 
   if (view === 'module-sim') {
     return (
-     <Layout title="ChemXplore" xp={xp} currentTab={tab} onTabChange={setTab}>
+     <Layout title="ChemXplore" xp={xp} currentTab={tab} onTabChange={setTab} onBack={() => setView('home')}>
         {renderSimulation()}
       </Layout>
     );
@@ -868,47 +930,74 @@ const App = () => {
 
   if (view === 'module-quiz') {
     return (
-      <Layout title="ChemXplore" xp={xp} currentTab={tab} onTabChange={setTab}>
+      <Layout title="ChemXplore" xp={xp} currentTab={tab} onTabChange={setTab} onBack={() => setView('home')}>
         <QuizView moduleId={activeModuleId} onComplete={completeQuiz} />
       </Layout>
     );
   }
 
   if (view === 'module-done') {
-    return (
-      <Layout title="ChemXplore" xp={xp} currentTab={tab} onTabChange={setTab}>
-        <div className="p-5 flex flex-col h-full justify-center text-center items-center min-h-[80vh]">
-          <div className="mb-6 relative">
-            <div className="absolute inset-0 bg-yellow-400 blur-3xl opacity-20 rounded-full"></div>
-            <div className="text-8xl relative z-10 animate-bounce">🏆</div>
-          </div>
-          <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Module Conquered!</h2>
-          <p className="text-slate-500 mb-8 max-w-xs">You've successfully mastered {activeModule.title}.</p>
-          
-          {/* Quiz Score Summary */}
-          <div className="w-full bg-slate-50 rounded-lg p-6 border border-slate-100 mb-6">
-             <div className="flex justify-between items-center mb-2">
-               <span className="font-bold text-slate-500 text-sm uppercase">Quiz Score</span>
-               <span className={`font-bold text-xl ${lastQuizScore >= 7 ? 'text-green-600' : 'text-orange-500'}`}>
-                 {lastQuizScore}/10
-               </span>
-             </div>
-             <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
-               <div 
-                 className={`h-full ${lastQuizScore >= 7 ? 'bg-green-500' : 'bg-orange-500'}`} 
-                 style={{ width: `${(lastQuizScore / 10) * 100}%` }}
-               ></div>
-             </div>
-             <p className="mt-2 text-xs text-slate-400">
-               {lastQuizScore >= 7 ? 'Great job! You really know your stuff.' : 'Review the lessons and try again to improve.'}
-             </p>
+  return (
+    <Layout title="ChemXplore" xp={xp} currentTab={tab} onTabChange={setTab} onBack={() => setView('home')}>
+      <div className="p-5 flex flex-col h-full justify-center text-center items-center min-h-[80vh]">
+        <div className="mb-6 relative">
+          <div className="absolute inset-0 bg-yellow-400 blur-3xl opacity-20 rounded-full"></div>
+          <div className="text-8xl relative z-10 animate-bounce">🏆</div>
+        </div>
+
+        <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Module Conquered!</h2>
+        <p className="text-slate-500 mb-8 max-w-xs">
+          You've successfully mastered {activeModule.title}.
+        </p>
+
+        {/* Quiz Score Summary */}
+        <div className="w-full bg-slate-50 rounded-lg p-6 border border-slate-100 mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="font-bold text-slate-500 text-sm uppercase">Quiz Score</span>
+            <span
+              className={`font-bold text-xl ${
+                lastQuizScore >= PASSING_SCORE ? 'text-green-600' : 'text-orange-500'
+              }`}
+            >
+              {lastQuizScore}/10
+            </span>
           </div>
 
-          <button onClick={() => setView('home')} className="w-full py-4 bg-slate-900 text-white rounded-lg font-bold text-lg shadow-xl hover:bg-slate-800 active:scale-95 transition">Return to Path</button>
+          <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+            <div
+              className={`h-full ${lastQuizScore >= PASSING_SCORE ? 'bg-green-500' : 'bg-orange-500'}`}
+              style={{ width: `${(lastQuizScore / 10) * 100}%` }}
+            ></div>
+          </div>
+
+          <p className="mt-2 text-xs text-slate-400">
+            {lastQuizScore >= PASSING_SCORE
+              ? 'Great job! You really know your stuff.'
+              : 'Review the lessons and try again to improve.'}
+          </p>
         </div>
-      </Layout>
-    );
-  }
+
+        {/* Conditional Button */}
+        {lastQuizScore >= PASSING_SCORE ? (
+          <button
+            onClick={() => setView('home')}
+            className="w-full py-4 bg-slate-900 text-white rounded-lg font-bold text-lg shadow-xl hover:bg-slate-800 active:scale-95 transition"
+          >
+            Return to Path
+          </button>
+        ) : (
+          <button
+            onClick={() => setView('module-quiz')}
+            className="w-full py-4 bg-orange-600 text-white rounded-lg font-bold text-lg"
+          >
+            Retry Quiz
+          </button>
+        )}
+      </div>
+    </Layout>
+  );
+}
+
 
   return null;
 };
